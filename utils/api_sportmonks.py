@@ -1,7 +1,6 @@
 import requests
 import os
 import logging
-from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 API_TOKEN = os.getenv('SPORTMONKS_API_TOKEN')
@@ -15,10 +14,10 @@ def get_live_matches():
         url = 'https://api.sportmonks.com/v3/football/livescores'
         headers = {'Authorization': f'Bearer {API_TOKEN}'}
         
-        # Parâmetros corrigidos e codificados manualmente
+        # Versão simplificada e testada da requisição
         params = {
-            'include': 'participants;stats',
-            'filters': 'stateCodes:3'  # Jogos em andamento
+            'include': 'participants',  # Removido stats temporariamente
+            # Removido filters para teste inicial
         }
         
         logger.info(f"Requisitando jogos com parâmetros: {params}")
@@ -30,18 +29,16 @@ def get_live_matches():
             timeout=10
         )
         
-        # Verificação adicional do status code
-        if response.status_code == 409:
-            logger.error("Erro 409 - Verifique os parâmetros da requisição")
+        # Debug: Mostra a URL completa gerada
+        logger.debug(f"URL completa da requisição: {response.url}")
+        
+        if response.status_code == 400:
+            logger.error(f"Erro 400 - Resposta da API: {response.text}")
             return []
             
         response.raise_for_status()
         
         data = response.json()
-        
-        # Debug: Log da resposta completa (remova depois de testar)
-        logger.debug(f"Resposta completa da API: {data}")
-        
         matches = []
         
         for match in data.get('data', []):
@@ -62,12 +59,11 @@ def get_live_matches():
                     'teams': {
                         'home': {'id': home_team['id'], 'name': home_team['name']},
                         'away': {'id': away_team['id'], 'name': away_team['name']}
-                    },
-                    'statistics': match.get('stats', [])
+                    }
                 })
                 
             except Exception as e:
-                logger.error(f"Erro ao processar partida {match.get('id')}: {str(e)}")
+                logger.error(f"Erro ao processar partida: {str(e)}")
                 continue
                 
         logger.info(f"Partidas processadas: {len(matches)}")
