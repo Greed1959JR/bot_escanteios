@@ -16,7 +16,7 @@ def check_corner_alert(match):
         possession = next((s["value"] for s in stats_list if s["type"] == "Ball Possession"), "0%")
         attacks = next((s["value"] for s in stats_list if s["type"] == "Dangerous Attacks"), 0)
 
-        if int(possession.strip('%')) > 60 and int(attacks) >= 5:
+        if int(possession.strip('%')) > 52 and int(attacks) >= 5:
             if team_name == match["teams"]["home"]["name"] and home_avg >= 6:
                 return f"🔔 Tendência de escanteios: {team_name} pressionando com média de {home_avg:.1f}"
             elif team_name == match["teams"]["away"]["name"] and away_avg >= 6:
