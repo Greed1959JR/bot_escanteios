@@ -9,7 +9,10 @@ def get_live_matches():
     try:
         url = 'https://api.sportmonks.com/v3/football/livescores'
         headers = {'Authorization': f'Bearer {API_TOKEN}'}
-        params = {'include': 'localTeam,visitorTeam,stats'}
+        params = {
+            'include': 'participants;stats',
+            'filters': 'stateCodes:3'  # Somente jogos em andamento
+        }
         
         logger.info("Buscando jogos ao vivo...")
         response = requests.get(url, headers=headers, params=params)
@@ -18,18 +21,26 @@ def get_live_matches():
         data = response.json()
         matches = []
         
-        for match in data['data']:
+        for match in data.get('data', []):
+            # Extrai os times corretamente da nova estrutura
+            participants = match.get('participants', [])
+            home_team = next((p for p in participants if p['meta']['location'] == 'home'), None)
+            away_team = next((p for p in participants if p['meta']['location'] == 'away'), None)
+            
+            if not home_team or not away_team:
+                continue
+                
             match_info = {
                 'id': match['id'],
-                'home_team': match['localTeam']['data']['name'],
-                'away_team': match['visitorTeam']['data']['name'],
-                'minute': match['time']['minute'] if match['time'] else 0,
+                'home_team': home_team['name'],
+                'away_team': away_team['name'],
+                'minute': match.get('time', {}).get('minute', 0),
                 'status': 'Ao Vivo',
                 'teams': {
-                    'home': {'id': match['localTeam']['data']['id'], 'name': match['localTeam']['data']['name']},
-                    'away': {'id': match['visitorTeam']['data']['id'], 'name': match['visitorTeam']['data']['name']}
+                    'home': {'id': home_team['id'], 'name': home_team['name']},
+                    'away': {'id': away_team['id'], 'name': away_team['name']}
                 },
-                'statistics': match.get('stats', {}).get('data', [])
+                'statistics': match.get('stats', [])
             }
             matches.append(match_info)
             
