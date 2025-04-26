@@ -38,13 +38,17 @@ def monitor_matches():
                     send_telegram_alert(alert)
         except Exception as e:
             print("Erro no monitoramento:", e)
-        time.sleep(60)  # Aguarda 1 min
+        time.sleep(60)  # Aguarda 1 minuto antes de verificar novamente
 
 # Envia mensagem no Telegram
 def send_telegram_alert(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message}
-    requests.post(url, data=payload)
+    try:
+        response = requests.post(url, data=payload)
+        print("Alerta enviado:", response.status_code)
+    except Exception as e:
+        print("Erro ao enviar alerta:", e)
 
 @app.route("/")
 def home():
@@ -54,5 +58,10 @@ def home():
 def status():
     return render_template("status.html", matches=live_matches_status)
 
-    threading.Thread(target=monitor_matches).start()
+# Só inicia o monitoramento e o servidor Flask se for executado diretamente
+if __name__ == '__main__':
+    # Inicia o monitoramento em background
+    threading.Thread(target=monitor_matches, daemon=True).start()
+    
+    # Roda o servidor Flask
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
