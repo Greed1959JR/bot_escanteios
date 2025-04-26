@@ -22,6 +22,7 @@ def monitor_matches():
     while True:
         try:
             matches = get_live_matches()
+            print("MATCHES RECEBIDOS:", matches)
             live_matches_status = []  # Limpa a lista antes de atualizar
             for match in matches:
                 # Preenche a lista para o status
