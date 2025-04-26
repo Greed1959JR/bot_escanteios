@@ -6,8 +6,13 @@ import os
 import threading
 import time
 import requests
+import logging
 
 app = Flask(__name__)
+
+# Configuração de logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Variáveis de ambiente
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -22,33 +27,40 @@ def monitor_matches():
     while True:
         try:
             matches = get_live_matches()
-            print("MATCHES RECEBIDOS:", matches)
+            logger.info(f"Partidas recebidas: {len(matches)}")
+            
             live_matches_status = []  # Limpa a lista antes de atualizar
             for match in matches:
-                # Preenche a lista para o status
-                live_matches_status.append({
+                # Adiciona detalhes completos para debug
+                logger.debug(f"Analisando partida: {match}")
+                
+                match_info = {
                     "home_team": match.get("home_team", ""),
                     "away_team": match.get("away_team", ""),
-                    "elapsed": match.get("elapsed", 0),
-                    "status": match.get("status", "")
-                })
+                    "elapsed": match.get("minute", 0),
+                    "status": match.get("status", ""),
+                    "full_data": match  # Adiciona dados completos para referência
+                }
+                live_matches_status.append(match_info)
+                
                 # Verifica alertas
                 alert = check_corner_alert(match)
                 if alert:
+                    logger.info(f"Alerta encontrado: {alert}")
                     send_telegram_alert(alert)
+                    
         except Exception as e:
-            print("Erro no monitoramento:", e)
-        time.sleep(60)  # Aguarda 1 minuto antes de verificar novamente
+            logger.error(f"Erro no monitoramento: {str(e)}", exc_info=True)
+        time.sleep(60)
 
-# Envia mensagem no Telegram
 def send_telegram_alert(message):
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message}
     try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message}
         response = requests.post(url, data=payload)
-        print("Alerta enviado:", response.status_code)
+        response.raise_for_status()
     except Exception as e:
-        print("Erro ao enviar alerta:", e)
+        logger.error(f"Erro ao enviar para Telegram: {str(e)}")
 
 @app.route("/")
 def home():
@@ -56,12 +68,13 @@ def home():
 
 @app.route("/status")
 def status():
+    logger.info(f"Acessando status - {len(live_matches_status)} partidas")
     return render_template("status.html", matches=live_matches_status)
 
-# Só inicia o monitoramento e o servidor Flask se for executado diretamente
-if __name__ == '__main__':
-    # Inicia o monitoramento em background
-    threading.Thread(target=monitor_matches, daemon=True).start()
-    
-    # Roda o servidor Flask
+# Inicia a thread antes de rodar o app
+thread = threading.Thread(target=monitor_matches)
+thread.daemon = True
+thread.start()
+
+if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
