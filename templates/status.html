@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Status dos Jogos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        tr:hover {background-color: #f1f1f1;}
+    </style>
+</head>
+<body>
+
+<h1>Jogos Monitorados ao Vivo</h1>
+
+<table>
+    <thead>
+        <tr>
+            <th>Time da Casa</th>
+            <th>Time Visitante</th>
+            <th>Minuto</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for match in matches %}
+        <tr>
+            <td>{{ match.home_team }}</td>
+            <td>{{ match.away_team }}</td>
+            <td>{{ match.elapsed }}'</td>
+            <td>{{ match.status }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+</body>
+</html>
