@@ -4,6 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 API_TOKEN = os.getenv('SPORTMONKS_API_TOKEN')
+BASE_URL = "https://api.sportmonks.com/v3"
 
 def get_live_matches():
     try:
@@ -11,16 +12,21 @@ def get_live_matches():
             logger.error("Token da SportMonks não configurado")
             return []
 
-        url = 'https://api.sportmonks.com/v3/football/livescores'
-        headers = {'Authorization': f'Bearer {API_TOKEN}'}
+        endpoint = "/football/livescores"
+        url = f"{BASE_URL}{endpoint}"
         
-        # Versão simplificada e testada da requisição
-        params = {
-            'include': 'participants',  # Removido stats temporariamente
-            # Removido filters para teste inicial
+        headers = {
+            "Authorization": f"Bearer {API_TOKEN}",
+            "Accept": "application/json",
+            "Content-Type": "application/json"
         }
         
-        logger.info(f"Requisitando jogos com parâmetros: {params}")
+        # Versão ultra-simplificada para teste
+        params = {
+            "per_page": 5  # Limita a 5 resultados para teste
+        }
+        
+        logger.info(f"Requisitando: {url} com headers: {headers.keys()}")
         
         response = requests.get(
             url,
@@ -29,48 +35,40 @@ def get_live_matches():
             timeout=10
         )
         
-        # Debug: Mostra a URL completa gerada
-        logger.debug(f"URL completa da requisição: {response.url}")
+        # Debug avançado
+        logger.debug(f"Status Code: {response.status_code}")
+        logger.debug(f"Response Headers: {response.headers}")
+        logger.debug(f"Response Content: {response.text[:200]}...")  # Mostra apenas início do conteúdo
         
-        if response.status_code == 400:
-            logger.error(f"Erro 400 - Resposta da API: {response.text}")
+        if response.status_code != 200:
+            logger.error(f"Erro {response.status_code} - Resposta: {response.text}")
             return []
             
-        response.raise_for_status()
-        
         data = response.json()
+        
+        if not isinstance(data, dict) or 'data' not in data:
+            logger.error("Resposta inesperada da API")
+            return []
+            
         matches = []
         
-        for match in data.get('data', []):
+        for match in data['data']:
             try:
-                participants = match.get('participants', [])
-                home_team = next((p for p in participants if p['meta']['location'] == 'home'), None)
-                away_team = next((p for p in participants if p['meta']['location'] == 'away'), None)
-                
-                if not home_team or not away_team:
-                    continue
-                    
-                matches.append({
+                match_info = {
                     'id': match['id'],
-                    'home_team': home_team['name'],
-                    'away_team': away_team['name'],
-                    'minute': match.get('time', {}).get('minute', 0),
-                    'status': 'Ao Vivo',
-                    'teams': {
-                        'home': {'id': home_team['id'], 'name': home_team['name']},
-                        'away': {'id': away_team['id'], 'name': away_team['name']}
-                    }
-                })
-                
+                    'status': match.get('status_description', 'Desconhecido'),
+                    'time': match.get('time', {}).get('minute', 0)
+                }
+                matches.append(match_info)
             except Exception as e:
                 logger.error(f"Erro ao processar partida: {str(e)}")
                 continue
                 
-        logger.info(f"Partidas processadas: {len(matches)}")
+        logger.info(f"Partidas recebidas (formato básico): {matches}")
         return matches
         
     except requests.exceptions.RequestException as e:
-        logger.error(f"Erro na requisição: {str(e)}")
+        logger.error(f"Erro de conexão: {str(e)}")
         return []
     except Exception as e:
         logger.error(f"Erro inesperado: {str(e)}", exc_info=True)
