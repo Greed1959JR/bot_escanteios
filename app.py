@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template
 from utils.api_football import get_live_matches
 from utils.football_data import get_team_profile
 from utils.alert_logic import check_corner_alert
@@ -13,25 +13,25 @@ app = Flask(__name__)
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
-# Variável global para armazenar os jogos monitorados
-live_matches_info = []
+# Lista para armazenar os jogos ao vivo
+live_matches_status = []
 
 # Função de monitoramento em background
 def monitor_matches():
-    global live_matches_info
+    global live_matches_status
     while True:
         try:
             matches = get_live_matches()
-            live_matches_info = []  # Limpa a lista antes de atualizar
+            live_matches_status = []  # Limpa a lista antes de atualizar
             for match in matches:
-                # Armazena informações importantes para o status
-                live_matches_info.append({
-                    "home_team": match['teams']['home']['name'],
-                    "away_team": match['teams']['away']['name'],
-                    "elapsed": match['fixture']['status']['elapsed'],
-                    "status": match['fixture']['status']['short']
+                # Preenche a lista para o status
+                live_matches_status.append({
+                    "home_team": match.get("home_team", ""),
+                    "away_team": match.get("away_team", ""),
+                    "elapsed": match.get("elapsed", 0),
+                    "status": match.get("status", "")
                 })
-                # Verifica se precisa enviar alerta
+                # Verifica alertas
                 alert = check_corner_alert(match)
                 if alert:
                     send_telegram_alert(alert)
@@ -49,10 +49,9 @@ def send_telegram_alert(message):
 def home():
     return render_template("index.html")
 
-# Nova rota para ver o status dos jogos monitorados
 @app.route("/status")
 def status():
-    return jsonify(live_matches_info)
+    return render_template("status.html", matches=live_matches_status)
 
 if __name__ == "__main__":
     threading.Thread(target=monitor_matches).start()
