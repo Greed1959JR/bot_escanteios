@@ -1,5 +1,5 @@
 from flask import Flask, render_template
-from utils.api_football import get_live_matches
+from utils.api_sportmonks import get_live_matches
 from utils.football_data import get_team_profile
 from utils.alert_logic import check_corner_alert
 import os
