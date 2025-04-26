@@ -11,7 +11,52 @@ logger = logging.getLogger(__name__)
 REQUEST_DELAY = int(os.getenv('REQUEST_DELAY', '5'))  # Segundos entre requisições
 LAST_REQUEST_TIME = 0
 
-def make_request(url, headers=None):
+# Lista de User-Agents válidos
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.0"
+]
+
+def get_headers():
+    return {
+        "User-Agent": random.choice(USER_AGENTS),
+        "Accept": "application/json",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Referer": "https://www.sofascore.com/",
+        "Origin": "https://www.sofascore.com"
+    }
+
+def get_match_stats(match_id):
+    """Pega estatísticas incluindo escanteios de uma partida específica"""
+    try:
+        url = f"https://api.sofascore.com/api/v1/event/{match_id}/statistics"
+        
+        response = requests.get(
+            url,
+            headers=get_headers(),
+            timeout=5
+        )
+        response.raise_for_status()
+        
+        stats = response.json().get('statistics', [])
+        corners = next(
+            (s for s in stats if s.get('group') == 'Corners'),
+            {'home': 0, 'away': 0}
+        )
+        
+        return {
+            'corners_home': corners.get('home', 0),
+            'corners_away': corners.get('away', 0),
+            'last_update': datetime.now().strftime("%H:%M:%S")
+        }
+        
+    except Exception as e:
+        logger.error(f"Erro ao buscar estatísticas: {str(e)}")
+        return {'corners_home': 0, 'corners_away': 0}
+
+def get_live_matches():
+    """Busca partidas ao vivo automaticamente"""
     global LAST_REQUEST_TIME
     
     # Respeita o delay entre requisições
@@ -20,72 +65,29 @@ def make_request(url, headers=None):
         time.sleep(REQUEST_DELAY - elapsed)
     
     try:
+        url = "https://api.sofascore.com/api/v1/sport/football/events/live"
         response = requests.get(
             url,
-            headers=headers or {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-                'Accept': 'application/json'
-            },
+            headers=get_headers(),
             timeout=10
         )
         LAST_REQUEST_TIME = time.time()
-        return response
-    except Exception as e:
-        logger.error(f"Erro na requisição: {str(e)}")
-        return None
-
-def get_live_matches():
-    # Tenta primeiro a API Football (se tiver chave)
-    football_data_key = os.getenv('FOOTBALL_DATA_KEY')
-    if football_data_key:
-        try:
-            response = make_request(
-                "http://api.football-data.org/v4/matches",
-                headers={'X-Auth-Token': football_data_key}
-            )
-            if response and response.status_code == 200:
-                matches = []
-                for match in response.json().get('matches', []):
-                    if match['status'] == 'IN_PLAY':
-                        matches.append({
-                            'id': match['id'],
-                            'home_team': match['homeTeam']['name'],
-                            'away_team': match['awayTeam']['name'],
-                            'minute': match.get('minute', 0),
-                            'status': 'LIVE'
-                        })
-                if matches:
-                    return matches
-        except Exception as e:
-            logger.error(f"Erro Football-Data: {str(e)}")
-
-    # Fallback para SofaScore (com headers melhorados)
-    try:
-        response = make_request(
-            "https://api.sofascore.com/api/v1/sport/football/events/live",
-            headers={
-                'User-Agent': random.choice([
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
-                    "Mozilla/5.0 (X11; Linux x86_64)"
-                ]),
-                'Accept': '*/*',
-                'Origin': 'https://www.sofascore.com',
-                'Referer': 'https://www.sofascore.com/'
-            }
-        )
         
-        if response and response.status_code == 200:
-            data = response.json()
-            return [{
-                'id': event['id'],
-                'home_team': event.get('homeTeam', {}).get('name', 'Unknown'),
-                'away_team': event.get('awayTeam', {}).get('name', 'Unknown'),
-                'minute': event.get('time', {}).get('scoreboardTime', 0),
-                'status': 'LIVE'
-            } for event in data.get('events', [])]
+        response.raise_for_status()
+        data = response.json()
+        
+        if not data.get('events'):
+            logger.warning("Nenhuma partida ao vivo encontrada")
+            return []
             
+        return [{
+            'id': event['id'],
+            'home_team': event.get('homeTeam', {}).get('name', 'Desconhecido'),
+            'away_team': event.get('awayTeam', {}).get('name', 'Desconhecido'),
+            'minute': event.get('time', {}).get('scoreboardTime', 0),
+            'status': 'AO VIVO'
+        } for event in data['events']]
+        
     except Exception as e:
-        logger.error(f"Erro SofaScore: {str(e)}")
-    
-    return []
+        logger.error(f"Erro ao buscar partidas: {str(e)}")
+        return []
