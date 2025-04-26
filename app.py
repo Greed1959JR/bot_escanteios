@@ -27,30 +27,24 @@ def monitor_matches():
     while True:
         try:
             matches = get_live_matches()
-            logger.info(f"Partidas recebidas: {len(matches)}")
+            if not matches:
+                logger.warning("Nenhuma partida recebida - verifique conexão com a API")
+                time.sleep(30)
+                continue
+                
+            live_matches_status = matches  # Agora armazenamos a estrutura completa
             
-            live_matches_status = []  # Limpa a lista antes de atualizar
             for match in matches:
-                # Adiciona detalhes completos para debug
-                logger.debug(f"Analisando partida: {match}")
-                
-                match_info = {
-                    "home_team": match.get("home_team", ""),
-                    "away_team": match.get("away_team", ""),
-                    "elapsed": match.get("minute", 0),
-                    "status": match.get("status", ""),
-                    "full_data": match  # Adiciona dados completos para referência
-                }
-                live_matches_status.append(match_info)
-                
-                # Verifica alertas
                 alert = check_corner_alert(match)
                 if alert:
-                    logger.info(f"Alerta encontrado: {alert}")
+                    logger.info(f"Alerta: {alert}")
                     send_telegram_alert(alert)
                     
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Erro de conexão: {str(e)}")
         except Exception as e:
-            logger.error(f"Erro no monitoramento: {str(e)}", exc_info=True)
+            logger.error(f"Erro inesperado: {str(e)}", exc_info=True)
+        
         time.sleep(60)
 
 def send_telegram_alert(message):
