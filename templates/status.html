@@ -1,61 +1,34 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Status dos Jogos</title>
+    <title>Bot de Apostas</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
-            padding: 20px;
-        }
-        h1 {
-            text-align: center;
-            color: #333;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: #fff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        th, td {
-            padding: 12px;
-            text-align: center;
-            border-bottom: 1px solid #ddd;
-        }
-        th {
-            background-color: #4CAF50;
-            color: white;
-        }
-        tr:hover {background-color: #f1f1f1;}
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px; text-align: center; border: 1px solid #ddd; }
+        tr:nth-child(even) { background-color: #f2f2f2; }
     </style>
 </head>
 <body>
-
-<h1>Jogos Monitorados ao Vivo</h1>
-
-<table>
-    <thead>
+    <h1>Partidas ao Vivo</h1>
+    {% if matches %}
+    <table>
         <tr>
-            <th>Time da Casa</th>
-            <th>Time Visitante</th>
+            <th>Casa</th>
+            <th>Visitante</th>
             <th>Minuto</th>
-            <th>Status</th>
+            <th>Escanteios</th>
         </tr>
-    </thead>
-    <tbody>
         {% for match in matches %}
         <tr>
-            <td>{{ match.home_team }}</td>
-            <td>{{ match.away_team }}</td>
-            <td>{{ match.elapsed }}'</td>
-            <td>{{ match.status }}</td>
+            <td>{{ match.home }}</td>
+            <td>{{ match.away }}</td>
+            <td>{{ match.minute }}'</td>
+            <td>{{ match.corners_home }}x{{ match.corners_away }}</td>
         </tr>
         {% endfor %}
-    </tbody>
-</table>
-
+    </table>
+    {% else %}
+    <p>Nenhuma partida ativa no momento.</p>
+    {% endif %}
 </body>
 </html>
