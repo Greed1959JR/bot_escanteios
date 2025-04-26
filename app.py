@@ -54,6 +54,5 @@ def home():
 def status():
     return render_template("status.html", matches=live_matches_status)
 
-if __name__ == "__main__":
     threading.Thread(target=monitor_matches).start()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
